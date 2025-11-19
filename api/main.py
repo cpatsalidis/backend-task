@@ -18,6 +18,7 @@ from .dependencies import ProcessorDep
 from .business import FacialProcessingService
 from .validators import RequestValidator
 from .job_queue import job_queue
+from .metrics import PrometheusMiddleware, get_metrics_response
 
 # Configure logging
 logging.basicConfig(
@@ -45,6 +46,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add Prometheus metrics middleware
+app.add_middleware(PrometheusMiddleware)
+
 
 @app.get("/")
 async def root():
@@ -57,7 +61,8 @@ async def root():
             "submit": "/api/v1/frontal/crop/submit",
             "status": "/api/v1/frontal/crop/status/{job_id}",
             "docs": "/api/docs",
-            "health": "/health"
+            "health": "/health",
+            "metrics": "/metrics"
         }
     }
 
@@ -69,6 +74,12 @@ async def health_check():
         "status": "healthy",
         "service": "facial-region-processing"
     }
+
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint."""
+    return get_metrics_response()
 
 
 @app.post(

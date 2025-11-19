@@ -47,6 +47,12 @@ python main.py
    - API: `http://localhost:8000`
    - Documentation: `http://localhost:8000/api/docs`
    - Health Check: `http://localhost:8000/health`
+   - Metrics: `http://localhost:8000/metrics`
+
+3. **Prometheus Monitoring:**
+   - Prometheus UI: `http://localhost:9090`
+   - Prometheus automatically scrapes metrics from the API every 5 seconds
+   - View metrics, create queries, and build dashboards in the Prometheus UI
 
 ### API Service (Local - Development)
 
@@ -143,3 +149,27 @@ POST /api/v1/frontal/crop/submit?delay=20
 ```
 
 This will add a 20-second delay before processing starts, allowing you to observe the status transitions from `pending` → `processing` → `completed`.
+
+## Monitoring & Observability
+
+The API includes **Prometheus metrics** for observability and monitoring.
+
+### Prometheus Metrics
+
+When running with Docker Compose, Prometheus is automatically started and configured to scrape metrics from the API.
+
+**Access Prometheus:**
+- Prometheus UI: `http://localhost:9090`
+- Metrics Endpoint: `http://localhost:8000/metrics`
+
+### Available Metrics
+
+**HTTP Request Metrics:**
+- `http_requests_total` - Total number of HTTP requests by method, endpoint, and status code
+- `http_request_duration_seconds` - HTTP request duration histogram
+
+**Job Processing Metrics:**
+- `jobs_total` - Total number of jobs by status (pending, completed, failed)
+- `jobs_in_progress` - Current number of jobs being processed (gauge)
+- `job_processing_duration_seconds` - Job processing duration histogram
+

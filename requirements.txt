@@ -15,4 +15,7 @@ requests==2.32.3
 # Utility dependencies
 pillow==11.0.0
 
+# Observability
+prometheus-client==0.21.0
+
 

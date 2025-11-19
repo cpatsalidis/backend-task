@@ -2,12 +2,29 @@
 
 import asyncio
 import logging
+import time
 from typing import Dict, Optional
 from datetime import datetime
 from enum import Enum
-import uuid
 
 logger = logging.getLogger(__name__)
+
+# Import metrics (lazy import to avoid circular dependencies)
+_metrics_imported = False
+_jobs_total = None
+_jobs_in_progress = None
+_job_processing_duration_seconds = None
+
+
+def _import_metrics():
+    """Lazy import of metrics to avoid circular dependencies."""
+    global _metrics_imported, _jobs_total, _jobs_in_progress, _job_processing_duration_seconds
+    if not _metrics_imported:
+        from .metrics import jobs_total, jobs_in_progress, job_processing_duration_seconds
+        _jobs_total = jobs_total
+        _jobs_in_progress = jobs_in_progress
+        _job_processing_duration_seconds = job_processing_duration_seconds
+        _metrics_imported = True
 
 
 class JobStatus(str, Enum):
@@ -80,6 +97,11 @@ class JobQueue:
             job = Job(job_id, request_data)
             self._jobs[job_id] = job
             
+            # Track job creation metric
+            _import_metrics()
+            if _jobs_total:
+                _jobs_total.labels(status=JobStatus.PENDING.value).inc()
+            
             logger.info(f"Created job {job_id} with status {job.status.value}")
             return job
     
@@ -121,14 +143,27 @@ class JobQueue:
                 return False
             
             job.status = status
+            
+            # Update metrics
+            _import_metrics()
             if status == JobStatus.PROCESSING:
                 job.started_at = datetime.utcnow()
+                if _jobs_in_progress:
+                    _jobs_in_progress.inc()
             elif status == JobStatus.COMPLETED:
                 job.completed_at = datetime.utcnow()
                 job.result = result
+                if _jobs_total:
+                    _jobs_total.labels(status=JobStatus.COMPLETED.value).inc()
+                if _jobs_in_progress:
+                    _jobs_in_progress.dec()
             elif status == JobStatus.FAILED:
                 job.completed_at = datetime.utcnow()
                 job.error = error
+                if _jobs_total:
+                    _jobs_total.labels(status=JobStatus.FAILED.value).inc()
+                if _jobs_in_progress:
+                    _jobs_in_progress.dec()
             
             logger.info(f"Updated job {job_id} to status {status.value}")
             return True
@@ -149,6 +184,7 @@ class JobQueue:
             service: FacialProcessingService instance
             delay_seconds: Optional delay to simulate complex processing
         """
+        processing_start_time = time.time()
         try:
             # Update status to processing
             await self.update_job_status(job_id, JobStatus.PROCESSING)
@@ -179,6 +215,9 @@ class JobQueue:
                 request
             )
             
+            # Calculate processing duration
+            processing_duration = time.time() - processing_start_time
+            
             # Update job with result
             await self.update_job_status(
                 job_id,
@@ -189,15 +228,26 @@ class JobQueue:
                 }
             )
             
-            logger.info(f"Job {job_id} completed successfully")
+            # Track processing duration metric
+            _import_metrics()
+            if _job_processing_duration_seconds:
+                _job_processing_duration_seconds.observe(processing_duration)
+            
+            logger.info(f"Job {job_id} completed successfully in {processing_duration:.2f}s")
             
         except Exception as e:
+            processing_duration = time.time() - processing_start_time
             logger.exception(f"Error processing job {job_id}: {str(e)}")
             await self.update_job_status(
                 job_id,
                 JobStatus.FAILED,
                 error=str(e)
             )
+            
+            # Track failed job processing duration
+            _import_metrics()
+            if _job_processing_duration_seconds:
+                _job_processing_duration_seconds.observe(processing_duration)
 
 
 # Global job queue instance
