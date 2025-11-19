@@ -173,3 +173,16 @@ When running with Docker Compose, Prometheus is automatically started and config
 - `jobs_in_progress` - Current number of jobs being processed (gauge)
 - `job_processing_duration_seconds` - Job processing duration histogram
 
+### Rich Console Logging
+
+The API uses **Rich** for beautifully formatted console logs with colors, emojis, and enhanced readability.
+
+**Example log output:**
+```
+✅ Created job #123 with status pending
+🚀 Starting crop submit processing
+🖼️  Decoding base64 images...
+📍 Processing 478 landmarks...
+🎨 Processing facial regions...
+✅ Job #123 completed successfully in 2.45s
+```

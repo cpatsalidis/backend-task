@@ -19,12 +19,10 @@ from .business import FacialProcessingService
 from .validators import RequestValidator
 from .job_queue import job_queue
 from .metrics import PrometheusMiddleware, get_metrics_response
+from .logging_config import setup_logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# Configure Rich logging
+setup_logging(level="INFO")
 logger = logging.getLogger(__name__)
 
 # Create FastAPI app
@@ -126,7 +124,7 @@ async def crop_submit(
     ```
     """
     try:
-        logger.info("Received crop/submit request")
+        logger.info("📥 Received crop/submit request")
         
         # Validate request data
         RequestValidator.validate_landmarks_count(request.landmarks)
@@ -145,7 +143,7 @@ async def crop_submit(
             )
         )
         
-        logger.info(f"Created job {job.id}, processing in background")
+        logger.info(f"✅ Created job [bold cyan]#{job.id}[/bold cyan], processing in background")
         
         return JobSubmitResponse(
             id=job.id,

@@ -54,15 +54,15 @@ class FacialProcessingService:
             ValueError: If image decoding fails
             RuntimeError: If processing fails
         """
-        logger.info("Starting crop submit processing")
+        logger.info("🚀 Starting crop submit processing")
         
         # Step 1: Decode base64 images
-        logger.info("Decoding base64 images...")
+        logger.info("🖼️  Decoding base64 images...")
         original_img = base64_to_image(request.image)
         segmentation_img = base64_to_image(request.segmentation_map)
         
         # Step 2: Convert landmarks to numpy array
-        logger.info(f"Processing {len(request.landmarks)} landmarks...")
+        logger.info(f"📍 Processing [bold cyan]{len(request.landmarks)}[/bold cyan] landmarks...")
         landmarks_dict = [{"x": lm.x, "y": lm.y} for lm in request.landmarks]
         landmarks = landmarks_to_numpy(landmarks_dict)
         
@@ -71,7 +71,7 @@ class FacialProcessingService:
         RequestValidator.validate_landmarks_bounds(landmarks, img_width, img_height)
         
         # Step 3: Process image
-        logger.info("Processing facial regions...")
+        logger.info("🎨 Processing facial regions...")
         processed_img, region_masks = self.processor.process_image(
             original_img,
             segmentation_img,
@@ -79,7 +79,7 @@ class FacialProcessingService:
         )
         
         # Step 4: Create SVG overlay
-        logger.info("Generating SVG overlay...")
+        logger.info("📐 Generating SVG overlay...")
         region_colors = self.processor.get_region_colors()
         region_labels = self.processor.get_region_labels()
         svg_string = create_svg_overlay(
@@ -92,10 +92,10 @@ class FacialProcessingService:
         svg_base64 = svg_to_base64(svg_string)
         
         # Step 5: Extract contours
-        logger.info("Extracting contours...")
+        logger.info("🔍 Extracting contours...")
         mask_contours = extract_contours_from_masks(region_masks, region_labels)
         
-        logger.info(f"Successfully processed image - Found {len(mask_contours)} regions")
+        logger.info(f"✅ Successfully processed image - Found [bold green]{len(mask_contours)}[/bold green] regions")
         
         # Return response
         return CropSubmitResponse(

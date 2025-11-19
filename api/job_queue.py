@@ -102,7 +102,7 @@ class JobQueue:
             if _jobs_total:
                 _jobs_total.labels(status=JobStatus.PENDING.value).inc()
             
-            logger.info(f"Created job {job_id} with status {job.status.value}")
+            logger.info(f"✅ Created job [bold cyan]#{job_id}[/bold cyan] with status [yellow]{job.status.value}[/yellow]")
             return job
     
     async def get_job(self, job_id: int) -> Optional[Job]:
@@ -165,7 +165,7 @@ class JobQueue:
                 if _jobs_in_progress:
                     _jobs_in_progress.dec()
             
-            logger.info(f"Updated job {job_id} to status {status.value}")
+            logger.info(f"🔄 Updated job [bold cyan]#{job_id}[/bold cyan] to status [yellow]{status.value}[/yellow]")
             return True
     
     async def process_job(
@@ -191,7 +191,7 @@ class JobQueue:
             
             # Simulate delay if specified (for demonstration)
             if delay_seconds > 0:
-                logger.info(f"Simulating {delay_seconds}s delay for job {job_id}")
+                logger.info(f"⏳ Simulating [bold]{delay_seconds}s[/bold] delay for job [bold cyan]#{job_id}[/bold cyan]")
                 await asyncio.sleep(delay_seconds)
             
             # Get job and process
@@ -233,7 +233,7 @@ class JobQueue:
             if _job_processing_duration_seconds:
                 _job_processing_duration_seconds.observe(processing_duration)
             
-            logger.info(f"Job {job_id} completed successfully in {processing_duration:.2f}s")
+            logger.info(f"✅ Job [bold cyan]#{job_id}[/bold cyan] completed successfully in [green]{processing_duration:.2f}s[/green]")
             
         except Exception as e:
             processing_duration = time.time() - processing_start_time
