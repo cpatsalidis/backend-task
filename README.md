@@ -49,8 +49,8 @@ python main.py
 #### Quick Start
 
 ```bash
-# Start all services (API, PostgreSQL, Prometheus)
-docker-compose up -d
+# Build and start services (API, PostgreSQL, Prometheus)
+docker-compose up --build
 
 # View logs
 docker-compose logs -f facial-processing-api
@@ -62,7 +62,6 @@ docker-compose down
 docker-compose down -v
 ```
 
-```
 
 #### Service Endpoints
 
