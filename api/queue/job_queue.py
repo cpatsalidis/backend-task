@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, Optional
 
-from ..config import LOAD_TESTING_MODE
+from ..config import LOAD_TESTING_MODE, get_thread_pool_executor
 
 logger = logging.getLogger(__name__)
 
@@ -225,13 +225,15 @@ class JobQueue:
                 service_with_db = FacialProcessingService(processor, db=db)
                 
                 # Process the request in executor to avoid blocking
-                # The service.process_crop_submit is CPU-bound, so we run it in a thread
+                # The service.process_crop_submit is CPU-bound, so we run it in a thread pool
+                # OPTIMIZATION: Use optimized thread pool executor for better parallelism
                 loop = asyncio.get_event_loop()
                 request = CropSubmitRequest(**job.request_data)
                 
-                # Run synchronous processing in executor
+                # Run synchronous processing in optimized executor
+                executor = get_thread_pool_executor()
                 result = await loop.run_in_executor(
-                    None,
+                    executor,
                     service_with_db.process_crop_submit,
                     request
                 )

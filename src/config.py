@@ -19,7 +19,7 @@ FACIAL_REGIONS = {
         'name': 'Left Under-Eye'
     },
     'right_under_eye': {
-        'indices': [453, 452, 451, 450, 261, 265, 372, 346, 329, 437, 277, 343, 465],
+        'indices': [453, 452, 451, 450, 261, 265, 346, 347, 329, 437, 277, 343, 465],
         'color': (139, 0, 81),
         'label': '3',
         'name': 'Right Under-Eye'

@@ -49,8 +49,19 @@ python main.py
 #### Quick Start
 
 ```bash
-# Build and start all services
-docker-compose up --build
+# Start all services (API, PostgreSQL, Prometheus)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f facial-processing-api
+
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (clears database)
+docker-compose down -v
+```
+
 ```
 
 #### Service Endpoints
@@ -69,22 +80,6 @@ Once running, the API will be available at:
 - **Prometheus UI**: `http://localhost:9090`
 - **Scraping**: Automatically scrapes metrics from the API every 5 seconds
 - **Features**: View metrics, create queries, and build dashboards
-
-#### Docker Compose Commands
-
-```bash
-# Start all services (API, PostgreSQL, Prometheus)
-docker-compose up -d
-
-# View logs
-docker-compose logs -f facial-processing-api
-
-# Stop all services
-docker-compose down
-
-# Stop and remove volumes (clears database)
-docker-compose down -v
-```
 
 ---
 
@@ -331,15 +326,6 @@ The API uses **Rich** for beautifully formatted console logs with colors, emojis
   - ✅ Timestamps
 
 > **Note**: The original images are NOT stored - only the processing results (SVG and contours) are cached.
-
-**ID Persistence:**
-- Cache entry IDs use PostgreSQL's auto-incrementing sequence
-- IDs persist across server restarts because:
-  - The database data is stored in a Docker volume (`postgres_data`)
-  - PostgreSQL sequences are stored in the database itself
-  - IDs only reset if the database volume is deleted (`docker-compose down -v`)
-- This means IDs continue incrementing even after restarting containers
-- No ID overlap occurs as long as the database volume persists
 
 ---
 

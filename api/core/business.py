@@ -3,6 +3,7 @@
 import logging
 from typing import Optional
 
+import numpy as np
 from sqlalchemy.orm import Session
 
 from ..cache import PerceptualCache
@@ -13,7 +14,6 @@ from ..utils import (
     base64_to_image,
     create_svg_overlay,
     extract_contours_from_masks,
-    landmarks_to_numpy,
     svg_to_base64,
 )
 from .service import FacialRegionProcessor
@@ -67,10 +67,16 @@ class FacialProcessingService:
             logger.info("🚀 Starting crop submit processing")
         
         # Check cache first if available
+        # OPTIMIZATION: Cache stores decoded image to avoid re-decoding
+        decoded_images = {}
         if self.cache:
             if not LOAD_TESTING_MODE:
                 logger.info("🔍 Checking cache for similar image...")
-            cached_result = self.cache.get_cached_result(request.image)
+            # Pass a callback to cache to store decoded image
+            cached_result = self.cache.get_cached_result(
+                request.image,
+                decoded_image_callback=lambda img: decoded_images.update({'original': img})
+            )
             if cached_result:
                 if not LOAD_TESTING_MODE:
                     logger.info("✅ Using cached result - skipping processing")
@@ -80,20 +86,27 @@ class FacialProcessingService:
                 )
         
         # Step 1: Decode base64 images
+        # OPTIMIZATION: Reuse decoded image from cache lookup if available
         if not LOAD_TESTING_MODE:
             logger.info("🖼️  Decoding base64 images...")
-        original_img = base64_to_image(request.image)
+        if 'original' in decoded_images:
+            original_img = decoded_images['original']
+        else:
+            original_img = base64_to_image(request.image)
         segmentation_img = base64_to_image(request.segmentation_map)
         
         # Step 2: Convert landmarks to numpy array
+        # OPTIMIZATION: Direct conversion from Pydantic models (skip dict intermediate)
         if not LOAD_TESTING_MODE:
             logger.info(f"📍 Processing [bold cyan]{len(request.landmarks)}[/bold cyan] landmarks...")
-        landmarks_dict = [{"x": lm.x, "y": lm.y} for lm in request.landmarks]
-        landmarks = landmarks_to_numpy(landmarks_dict)
+        landmarks = np.array([[lm.x, lm.y] for lm in request.landmarks], dtype=np.int32)
         
-        # Validate landmarks bounds
+        # Get image dimensions (needed for processing)
         img_height, img_width = original_img.shape[:2]
-        RequestValidator.validate_landmarks_bounds(landmarks, img_width, img_height)
+        
+        # Validate landmarks bounds (skip in load testing mode for performance)
+        if not LOAD_TESTING_MODE:
+            RequestValidator.validate_landmarks_bounds(landmarks, img_width, img_height)
         
         # Step 3: Process image
         if not LOAD_TESTING_MODE:

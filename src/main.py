@@ -168,6 +168,37 @@ def main():
         right_ear_mask = ear_mask.copy()
         right_ear_mask[:, :mid_x] = 0
         
+        # Smooth ear masks for better appearance
+        def smooth_mask(mask, aggressive=True):
+            """Apply smoothing operations to mask.
+            
+            Args:
+                mask: Input mask to smooth
+                aggressive: If True, use full smoothing. If False, use lighter smoothing.
+            """
+            if not mask.any():
+                return mask
+            # Morphological closing to fill gaps and smooth edges
+            if aggressive:
+                kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, config.MORPH_KERNEL_SIZE)
+            else:
+                # Lighter smoothing for right ear - smaller kernel
+                kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (35, 35))
+            smoothed = cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel)
+            # Gaussian blur for smoother edges
+            if aggressive:
+                smoothed = cv.GaussianBlur(smoothed, config.GAUSSIAN_KERNEL_SIZE, config.GAUSSIAN_SIGMA)
+            else:
+                # Lighter Gaussian blur for right ear
+                smoothed = cv.GaussianBlur(smoothed, (25, 25), 5)
+            # Threshold back to binary
+            _, smoothed = cv.threshold(smoothed, 127, 255, cv.THRESH_BINARY)
+            return smoothed
+        
+        # Apply smoothing to ear masks - less aggressive for right ear
+        left_ear_mask = smooth_mask(left_ear_mask, aggressive=True)
+        right_ear_mask = smooth_mask(right_ear_mask, aggressive=False)
+        
         # Apply left ear
         if left_ear_mask.any():
             result_final = apply_extended_region(result_final, rotated_original, left_ear_mask, lower_face_color)

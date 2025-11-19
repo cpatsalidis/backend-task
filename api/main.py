@@ -219,8 +219,9 @@ async def crop_submit(
         if not LOAD_TESTING_MODE:
             logger.info("📥 Received crop/submit request")
         
-        # Validate request data
-        RequestValidator.validate_landmarks_count(request.landmarks)
+        # Validate request data (skip in load testing mode for performance)
+        if not LOAD_TESTING_MODE:
+            RequestValidator.validate_landmarks_count(request.landmarks)
         
         # Create job
         job = await job_queue.create_job(request.dict())

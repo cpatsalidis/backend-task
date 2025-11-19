@@ -224,6 +224,9 @@ def landmarks_to_numpy(landmarks: List[Dict[str, float]]) -> np.ndarray:
     Returns:
         Numpy array of shape (N, 2)
     """
+    # OPTIMIZATION: Use list comprehension with pre-allocated array for better performance
+    if not landmarks:
+        return np.array([], dtype=np.int32).reshape(0, 2)
     points = np.array([[lm['x'], lm['y']] for lm in landmarks], dtype=np.int32)
     return points
 

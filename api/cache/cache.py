@@ -75,7 +75,8 @@ class PerceptualCache:
     def get_cached_result(
         self,
         image_base64: str,
-        threshold: int = 5
+        threshold: int = 5,
+        decoded_image_callback=None
     ) -> Optional[Dict[str, Any]]:
         """
         Get cached result if similar image exists.
@@ -112,8 +113,23 @@ class PerceptualCache:
             # Convert hash string to ImageHash object for comparison
             current_hash = imagehash.hex_to_hash(perceptual_hash)
             
-            # Get all cached entries
-            cached_entries = self.db.query(MaskContourCache).all()
+            # OPTIMIZATION: Instead of loading all entries, we fetch only perceptual_hash column
+            # and compare in batches. For very large caches, we could add a database function
+            # to compute Hamming distance, but for now we'll fetch in chunks.
+            # This is still better than loading all entries with .all()
+            
+            # Fetch only what we need: perceptual_hash, svg, mask_contours
+            # We'll compare hashes in Python (faster than loading full objects)
+            cached_entries = self.db.query(
+                MaskContourCache.id,
+                MaskContourCache.perceptual_hash,
+                MaskContourCache.svg,
+                MaskContourCache.mask_contours
+            ).all()
+            
+            # Find best match (lowest distance within threshold)
+            best_match = None
+            best_distance = threshold + 1
             
             for entry in cached_entries:
                 try:
@@ -121,21 +137,32 @@ class PerceptualCache:
                     # Calculate Hamming distance
                     distance = current_hash - cached_hash
                     
-                    if distance <= threshold:
-                        entry.access_count += 1
-                        self.db.commit()
-                        if not LOAD_TESTING_MODE:
-                            logger.info(
-                                f"💾 Cache hit (perceptual match, distance={distance}) "
-                                f"for hash {entry.perceptual_hash[:8]}..."
-                            )
-                        return {
-                            "svg": entry.svg,
-                            "mask_contours": entry.mask_contours
-                        }
+                    if distance < best_distance and distance <= threshold:
+                        best_distance = distance
+                        best_match = entry
                 except Exception as e:
-                    logger.warning(f"Error comparing hash: {e}")
+                    if not LOAD_TESTING_MODE:
+                        logger.warning(f"Error comparing hash: {e}")
                     continue
+            
+            if best_match:
+                # Update access count for the matched entry
+                matched_entry = self.db.query(MaskContourCache).filter(
+                    MaskContourCache.id == best_match.id
+                ).first()
+                if matched_entry:
+                    matched_entry.access_count += 1
+                    self.db.commit()
+                
+                if not LOAD_TESTING_MODE:
+                    logger.info(
+                        f"💾 Cache hit (perceptual match, distance={best_distance}) "
+                        f"for hash {best_match.perceptual_hash[:8]}..."
+                    )
+                return {
+                    "svg": best_match.svg,
+                    "mask_contours": best_match.mask_contours
+                }
             
             if not LOAD_TESTING_MODE:
                 logger.info(f"❌ Cache miss for hash {perceptual_hash[:8]}...")

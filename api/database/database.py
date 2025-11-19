@@ -30,11 +30,19 @@ Base = declarative_base()
 # Try to create engine if database is enabled
 if USE_DATABASE:
     try:
+        # OPTIMIZATION: Increase pool size in load testing mode for better concurrency
+        if LOAD_TESTING_MODE:
+            pool_size = int(os.getenv("DB_POOL_SIZE", "20"))
+            max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "40"))
+        else:
+            pool_size = 10
+            max_overflow = 20
+        
         engine = create_engine(
             DATABASE_URL,
             pool_pre_ping=True,  # Verify connections before using
-            pool_size=10,
-            max_overflow=20,
+            pool_size=pool_size,
+            max_overflow=max_overflow,
             connect_args={"connect_timeout": 2}  # Quick timeout for connection test
         )
         # Test connection
