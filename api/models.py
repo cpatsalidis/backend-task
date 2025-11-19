@@ -65,3 +65,37 @@ class ErrorResponse(BaseModel):
             }
         }
 
+
+class JobSubmitResponse(BaseModel):
+    """Response model for job submission."""
+    id: int = Field(..., description="Job ID")
+    status: str = Field(..., description="Job status (pending)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": 123,
+                "status": "pending"
+            }
+        }
+
+
+class JobStatusResponse(BaseModel):
+    """Response model for job status check."""
+    id: int = Field(..., description="Job ID")
+    status: str = Field(..., description="Job status (pending, processing, completed, failed)")
+    svg: str = Field(None, description="Base64 encoded SVG (only when status is completed)")
+    mask_contours: Dict[str, List[List[float]]] = Field(None, description="Mask contours (only when status is completed)")
+    error: str = Field(None, description="Error message (only when status is failed)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": 123,
+                "status": "completed",
+                "svg": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPi4uLjwvc3ZnPg==",
+                "mask_contours": {
+                    "forehead": [[100.0, 50.0], [110.0, 55.0], [120.0, 50.0]]
+                }
+            }
+        }
