@@ -22,10 +22,15 @@ from .models import (
 )
 from .queue import job_queue
 from .utils import RequestValidator
+from .config import DEFAULT_LOG_LEVEL, LOAD_TESTING_MODE
 
 # Configure Rich logging
-setup_logging(level="INFO")
+setup_logging(level=DEFAULT_LOG_LEVEL)
 logger = logging.getLogger(__name__)
+
+# Log load testing mode status
+if LOAD_TESTING_MODE:
+    logger.warning("🚀 Load testing mode ENABLED - delay disabled, minimal logging")
 
 # Create FastAPI app
 app = FastAPI(
@@ -56,7 +61,8 @@ async def startup_event():
     """Initialize database on application startup."""
     try:
         init_db()
-        logger.info("✅ Database initialized")
+        if not LOAD_TESTING_MODE:
+            logger.info("✅ Database initialized")
     except Exception as e:
         logger.warning(f"⚠️  Database initialization failed: {e}")
 
@@ -210,7 +216,8 @@ async def crop_submit(
     ```
     """
     try:
-        logger.info("📥 Received crop/submit request")
+        if not LOAD_TESTING_MODE:
+            logger.info("📥 Received crop/submit request")
         
         # Validate request data
         RequestValidator.validate_landmarks_count(request.landmarks)
@@ -220,16 +227,19 @@ async def crop_submit(
         
         # Start background processing
         # Note: Service will be created in process_job with its own DB session
+        # Ignore delay in load testing mode
+        effective_delay = 0.0 if LOAD_TESTING_MODE else delay
         asyncio.create_task(
             job_queue.process_job(
                 job.id,
                 processor,
                 None,  # Service will be created in process_job
-                delay_seconds=delay
+                delay_seconds=effective_delay
             )
         )
         
-        logger.info(f"✅ Created job [bold cyan]#{job.id}[/bold cyan], processing in background")
+        if not LOAD_TESTING_MODE:
+            logger.info(f"✅ Created job [bold cyan]#{job.id}[/bold cyan], processing in background")
         
         return JobSubmitResponse(
             id=job.id,

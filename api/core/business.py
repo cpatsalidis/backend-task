@@ -6,6 +6,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from ..cache import PerceptualCache
+from ..config import LOAD_TESTING_MODE
 from ..models import CropSubmitRequest, CropSubmitResponse
 from ..utils import (
     RequestValidator,
@@ -62,26 +63,31 @@ class FacialProcessingService:
             ValueError: If image decoding fails
             RuntimeError: If processing fails
         """
-        logger.info("🚀 Starting crop submit processing")
+        if not LOAD_TESTING_MODE:
+            logger.info("🚀 Starting crop submit processing")
         
         # Check cache first if available
         if self.cache:
-            logger.info("🔍 Checking cache for similar image...")
+            if not LOAD_TESTING_MODE:
+                logger.info("🔍 Checking cache for similar image...")
             cached_result = self.cache.get_cached_result(request.image)
             if cached_result:
-                logger.info("✅ Using cached result - skipping processing")
+                if not LOAD_TESTING_MODE:
+                    logger.info("✅ Using cached result - skipping processing")
                 return CropSubmitResponse(
                     svg=cached_result["svg"],
                     mask_contours=cached_result["mask_contours"]
                 )
         
         # Step 1: Decode base64 images
-        logger.info("🖼️  Decoding base64 images...")
+        if not LOAD_TESTING_MODE:
+            logger.info("🖼️  Decoding base64 images...")
         original_img = base64_to_image(request.image)
         segmentation_img = base64_to_image(request.segmentation_map)
         
         # Step 2: Convert landmarks to numpy array
-        logger.info(f"📍 Processing [bold cyan]{len(request.landmarks)}[/bold cyan] landmarks...")
+        if not LOAD_TESTING_MODE:
+            logger.info(f"📍 Processing [bold cyan]{len(request.landmarks)}[/bold cyan] landmarks...")
         landmarks_dict = [{"x": lm.x, "y": lm.y} for lm in request.landmarks]
         landmarks = landmarks_to_numpy(landmarks_dict)
         
@@ -90,7 +96,8 @@ class FacialProcessingService:
         RequestValidator.validate_landmarks_bounds(landmarks, img_width, img_height)
         
         # Step 3: Process image
-        logger.info("🎨 Processing facial regions...")
+        if not LOAD_TESTING_MODE:
+            logger.info("🎨 Processing facial regions...")
         processed_img, region_masks = self.processor.process_image(
             original_img,
             segmentation_img,
@@ -98,7 +105,8 @@ class FacialProcessingService:
         )
         
         # Step 4: Create SVG overlay
-        logger.info("📐 Generating SVG overlay...")
+        if not LOAD_TESTING_MODE:
+            logger.info("📐 Generating SVG overlay...")
         region_colors = self.processor.get_region_colors()
         region_labels = self.processor.get_region_labels()
         svg_string = create_svg_overlay(
@@ -111,18 +119,23 @@ class FacialProcessingService:
         svg_base64 = svg_to_base64(svg_string)
         
         # Step 5: Extract contours
-        logger.info("🔍 Extracting contours...")
+        if not LOAD_TESTING_MODE:
+            logger.info("🔍 Extracting contours...")
         mask_contours = extract_contours_from_masks(region_masks, region_labels)
         
-        logger.info(f"✅ Successfully processed image - Found [bold green]{len(mask_contours)}[/bold green] regions")
+        if not LOAD_TESTING_MODE:
+            logger.info(f"✅ Successfully processed image - Found [bold green]{len(mask_contours)}[/bold green] regions")
         
         # Store in cache if available
         if self.cache:
             try:
                 self.cache.store_result(request.image, svg_base64, mask_contours)
-                logger.info("💾 Result stored in cache")
+                if not LOAD_TESTING_MODE:
+                    logger.info("💾 Result stored in cache")
             except Exception as e:
-                logger.warning(f"⚠️  Failed to store in cache: {e}")
+                # Only log cache errors if not in load testing mode
+                if not LOAD_TESTING_MODE:
+                    logger.warning(f"⚠️  Failed to store in cache: {e}")
         
         # Return response
         return CropSubmitResponse(

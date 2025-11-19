@@ -7,6 +7,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, Optional
 
+from ..config import LOAD_TESTING_MODE
+
 logger = logging.getLogger(__name__)
 
 # Import metrics (lazy import to avoid circular dependencies)
@@ -165,7 +167,8 @@ class JobQueue:
                 if _jobs_in_progress:
                     _jobs_in_progress.dec()
             
-            logger.info(f"🔄 Updated job [bold cyan]#{job_id}[/bold cyan] to status [yellow]{status.value}[/yellow]")
+            if not LOAD_TESTING_MODE:
+                logger.info(f"🔄 Updated job [bold cyan]#{job_id}[/bold cyan] to status [yellow]{status.value}[/yellow]")
             return True
     
     async def process_job(
@@ -189,10 +192,13 @@ class JobQueue:
             # Update status to processing
             await self.update_job_status(job_id, JobStatus.PROCESSING)
             
-            # Simulate delay if specified (for demonstration)
-            if delay_seconds > 0:
+            # Simulate delay if specified (for demonstration) - skip in load testing mode
+            if delay_seconds > 0 and not LOAD_TESTING_MODE:
                 logger.info(f"⏳ Simulating [bold]{delay_seconds}s[/bold] delay for job [bold cyan]#{job_id}[/bold cyan]")
                 await asyncio.sleep(delay_seconds)
+            elif delay_seconds > 0 and LOAD_TESTING_MODE:
+                # Delay ignored in load testing mode
+                pass
             
             # Get job and process
             job = await self.get_job(job_id)
@@ -251,7 +257,8 @@ class JobQueue:
             if _job_processing_duration_seconds:
                 _job_processing_duration_seconds.observe(processing_duration)
             
-            logger.info(f"✅ Job [bold cyan]#{job_id}[/bold cyan] completed successfully in [green]{processing_duration:.2f}s[/green]")
+            if not LOAD_TESTING_MODE:
+                logger.info(f"✅ Job [bold cyan]#{job_id}[/bold cyan] completed successfully in [green]{processing_duration:.2f}s[/green]")
             
         except Exception as e:
             processing_duration = time.time() - processing_start_time

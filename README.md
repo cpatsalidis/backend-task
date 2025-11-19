@@ -1,27 +1,33 @@
-# Facial Region Processing
+# 🎯 Facial Region Processing
 
-A facial image processing pipeline that detects, segments, and labels facial regions with automatic tilt correction and cropping.
+> A facial image processing pipeline that detects, segments, and labels facial regions with automatic tilt correction and cropping.
 
-## Installation
+---
+
+## 📦 Installation
 
 ### Local Development
 
 1. **Create a virtual environment (recommended):**
    ```bash
    python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
 
 2. **Install dependencies:**
    ```bash
    pip install -r requirements-local.txt
    ```
 
-### Docker Setup
+### 🐳 Docker Setup
 
-No additional installation needed - Docker will handle everything during build.
+> **No additional installation needed** - Docker will handle everything during build.
 
-## Running
+---
 
-### Local Execution
+## 🚀 Running
+
+### 📁 Local Execution
 
 ```bash
 cd src
@@ -36,25 +42,53 @@ python main.py
 **Output:**
 - `Backend_Engineer/result_final.png` - Processed image with labeled regions
 
-### API Service (Docker)
+---
 
-1. **Build and start the service:**
-   ```bash
-   docker-compose up --build
-   ```
+### 🐳 API Service (Docker)
 
-2. **The API will be available at:**
-   - API: `http://localhost:8000`
-   - Documentation: `http://localhost:8000/api/docs`
-   - Health Check: `http://localhost:8000/health`
-   - Metrics: `http://localhost:8000/metrics`
+#### Quick Start
 
-3. **Prometheus Monitoring:**
-   - Prometheus UI: `http://localhost:9090`
-   - Prometheus automatically scrapes metrics from the API every 5 seconds
-   - View metrics, create queries, and build dashboards in the Prometheus UI
+```bash
+# Build and start all services
+docker-compose up --build
+```
 
-### API Service (Local - Development)
+#### Service Endpoints
+
+Once running, the API will be available at:
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| **API** | `http://localhost:8000` | Main API endpoint |
+| **Documentation** | `http://localhost:8000/api/docs` | Interactive API docs |
+| **Health Check** | `http://localhost:8000/health` | Service health status |
+| **Metrics** | `http://localhost:8000/metrics` | Prometheus metrics |
+
+#### 📊 Prometheus Monitoring
+
+- **Prometheus UI**: `http://localhost:9090`
+- **Scraping**: Automatically scrapes metrics from the API every 5 seconds
+- **Features**: View metrics, create queries, and build dashboards
+
+#### Docker Compose Commands
+
+```bash
+# Start all services (API, PostgreSQL, Prometheus)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f facial-processing-api
+
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (clears database)
+docker-compose down -v
+```
+
+---
+
+### 💻 API Service (Local - Development)
 
 ```bash
 # Install dependencies (if not already done)
@@ -64,23 +98,68 @@ pip install -r requirements-local.txt
 uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-**Note:** The API can run without PostgreSQL. If the database is not available:
-- The API will start normally with a warning message
-- Caching will be disabled (no cache hits/misses)
-- All other functionality works normally
-- To disable database completely, set `USE_DATABASE=false` environment variable
+> **💡 Note:** The API can run without PostgreSQL. If the database is not available:
+> - The API will start normally with a warning message
+> - Caching will be disabled (no cache hits/misses)
+> - All other functionality works normally
+> - To disable database completely, set `USE_DATABASE=false` environment variable
 
-## API Usage
+---
 
-The API uses an **asynchronous, non-blocking job queue system**. Jobs are submitted and processed in the background, allowing instant responses.
+### ⚡ Load Testing Mode
 
-### Submit a Job
+> **🚀 Maximum Performance Mode** - Optimized for load testing with minimal overhead
+
+#### Local Development
+
+```bash
+export LOAD_TESTING_MODE=true
+uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+#### Docker
+
+```bash
+# Set environment variable and restart
+LOAD_TESTING_MODE=true docker-compose up -d --build
+```
+
+#### Docker Compose (Permanent)
+
+Edit `docker-compose.yml` and change:
+```yaml
+- LOAD_TESTING_MODE=${LOAD_TESTING_MODE:-false}
+```
+to:
+```yaml
+- LOAD_TESTING_MODE=true
+```
+
+#### What Happens When Enabled
+
+| Feature | Behavior |
+|---------|----------|
+| **Delay Parameter** | Ignored (always 0) |
+| **Logging Level** | Reduced to WARNING (minimal output) |
+| **INFO Logs** | Disabled |
+| **Performance** | Maximum speed |
+
+---
+
+## 📡 API Usage
+
+> The API uses an **asynchronous, non-blocking job queue system**. Jobs are submitted and processed in the background, allowing instant responses.
+
+---
+
+### 📤 Submit a Job
 
 **Endpoint:** `POST /api/v1/frontal/crop/submit`
 
 Submits a processing job and returns immediately with a job ID and status.
 
-**Request Body:**
+#### Request Body
+
 ```json
 {
   "image": "base64_encoded_image_string",
@@ -92,10 +171,14 @@ Submits a processing job and returns immediately with a job ID and status.
 }
 ```
 
-**Query Parameters:**
+#### Query Parameters
+
 - `delay` (optional): Simulate processing delay in seconds (e.g., `?delay=20` for 20 seconds)
 
-**Response (HTTP 202 Accepted):**
+> **Note:** Delay is ignored when `LOAD_TESTING_MODE=true`
+
+#### Response (HTTP 202 Accepted)
+
 ```json
 {
   "id": 123,
@@ -103,13 +186,17 @@ Submits a processing job and returns immediately with a job ID and status.
 }
 ```
 
-### Check Job Status
+---
+
+### 📊 Check Job Status
 
 **Endpoint:** `GET /api/v1/frontal/crop/status/{job_id}`
 
 Returns the current status of a job. When completed, includes the processing results.
 
-**Response (Pending/Processing):**
+#### Response Examples
+
+**Pending/Processing:**
 ```json
 {
   "id": 123,
@@ -117,7 +204,7 @@ Returns the current status of a job. When completed, includes the processing res
 }
 ```
 
-**Response (Completed):**
+**Completed:**
 ```json
 {
   "id": 123,
@@ -130,7 +217,7 @@ Returns the current status of a job. When completed, includes the processing res
 }
 ```
 
-**Response (Failed):**
+**Failed:**
 ```json
 {
   "id": 123,
@@ -139,14 +226,20 @@ Returns the current status of a job. When completed, includes the processing res
 }
 ```
 
-### Job Status Values
+---
 
-- `pending`: Job is queued but not yet started
-- `processing`: Job is currently being processed
-- `completed`: Job completed successfully, results available
-- `failed`: Job failed with an error
+### 📋 Job Status Values
 
-### Adding Delay for Testing
+| Status | Description |
+|--------|-------------|
+| `pending` | Job is queued but not yet started |
+| `processing` | Job is currently being processed |
+| `completed` | Job completed successfully, results available |
+| `failed` | Job failed with an error |
+
+---
+
+### ⏱️ Adding Delay for Testing
 
 To simulate complex processing and demonstrate the async behavior, add the `delay` query parameter:
 
@@ -154,21 +247,26 @@ To simulate complex processing and demonstrate the async behavior, add the `dela
 POST /api/v1/frontal/crop/submit?delay=20
 ```
 
-This will add a 20-second delay before processing starts, allowing you to observe the status transitions from `pending` → `processing` → `completed`.
+> This will add a 20-second delay before processing starts, allowing you to observe the status transitions from `pending` → `processing` → `completed`.
 
-## Monitoring & Observability
+---
 
-The API includes **Prometheus metrics** for observability and monitoring.
+## 📈 Monitoring & Observability
 
-### Prometheus Metrics
+> The API includes **Prometheus metrics** for observability and monitoring.
+
+---
+
+### 📊 Prometheus Metrics
 
 When running with Docker Compose, Prometheus is automatically started and configured to scrape metrics from the API.
 
-**Access Prometheus:**
-- Prometheus UI: `http://localhost:9090`
-- Metrics Endpoint: `http://localhost:8000/metrics`
+#### Access Points
 
-### Available Metrics
+- **Prometheus UI**: `http://localhost:9090`
+- **Metrics Endpoint**: `http://localhost:8000/metrics`
+
+#### Available Metrics
 
 **HTTP Request Metrics:**
 - `http_requests_total` - Total number of HTTP requests by method, endpoint, and status code
@@ -179,7 +277,9 @@ When running with Docker Compose, Prometheus is automatically started and config
 - `jobs_in_progress` - Current number of jobs being processed (gauge)
 - `job_processing_duration_seconds` - Job processing duration histogram
 
-### Rich Console Logging
+---
+
+### 🎨 Rich Console Logging
 
 The API uses **Rich** for beautifully formatted console logs with colors, emojis, and enhanced readability.
 
@@ -193,11 +293,15 @@ The API uses **Rich** for beautifully formatted console logs with colors, emojis
 ✅ Job #123 completed successfully in 2.45s
 ```
 
-## Database & Caching
+---
 
-The API uses **PostgreSQL** with a **perceptual cache system** to store mask contours and avoid duplicate processing.
+## 💾 Database & Caching
 
-### How the Cache Works
+> The API uses **PostgreSQL** with a **perceptual cache system** to store mask contours and avoid duplicate processing.
+
+---
+
+### 🔍 How the Cache Works
 
 **Step-by-step:**
 
@@ -211,7 +315,9 @@ The API uses **PostgreSQL** with a **perceptual cache system** to store mask con
 4. **Cache hit** → Returns cached SVG and mask contours immediately (no processing)
 5. **Cache miss** → Processes image normally, then stores result in database
 
-### Where Data is Stored
+---
+
+### 📍 Where Data is Stored
 
 **PostgreSQL Database:**
 - **Location**: PostgreSQL container (port 5432)
@@ -224,9 +330,20 @@ The API uses **PostgreSQL** with a **perceptual cache system** to store mask con
   - ✅ Access count (cache hit tracking)
   - ✅ Timestamps
 
-**Note**: The original images are NOT stored - only the processing results (SVG and contours) are cached.
+> **Note**: The original images are NOT stored - only the processing results (SVG and contours) are cached.
 
-### Viewing Cached Data
+**ID Persistence:**
+- Cache entry IDs use PostgreSQL's auto-incrementing sequence
+- IDs persist across server restarts because:
+  - The database data is stored in a Docker volume (`postgres_data`)
+  - PostgreSQL sequences are stored in the database itself
+  - IDs only reset if the database volume is deleted (`docker-compose down -v`)
+- This means IDs continue incrementing even after restarting containers
+- No ID overlap occurs as long as the database volume persists
+
+---
+
+### 👀 Viewing Cached Data
 
 **API Endpoints:**
 
@@ -248,10 +365,12 @@ The API uses **PostgreSQL** with a **perceptual cache system** to store mask con
    ```
    Returns full cache entry including SVG and mask contours.
 
-### Cache Configuration
+---
 
-- **Similarity threshold**: Default is 5 (Hamming distance, range 0-64)
-  - Lower = stricter matching (fewer false positives)
-  - Higher = more lenient matching (more cache hits)
-- **Storage**: Results are automatically stored after processing
-- **Persistence**: Data persists in PostgreSQL volume across container restarts
+### ⚙️ Cache Configuration
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| **Similarity threshold** | Default: 5 (Hamming distance, range 0-64) | Lower = stricter matching (fewer false positives)<br>Higher = more lenient matching (more cache hits) |
+| **Storage** | Automatic | Results are automatically stored after processing |
+| **Persistence** | Docker volume | Data persists in PostgreSQL volume across container restarts |

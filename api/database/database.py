@@ -9,6 +9,8 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker
 
+from ..config import LOAD_TESTING_MODE
+
 logger = logging.getLogger(__name__)
 
 # Get database URL from environment or use default
@@ -39,13 +41,15 @@ if USE_DATABASE:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        logger.info("✅ Database connection available")
+        if not LOAD_TESTING_MODE:
+            logger.info("✅ Database connection available")
     except Exception as e:
         logger.warning(f"⚠️  Database not available: {e}. Running without caching.")
         engine = None
         SessionLocal = None
 else:
-    logger.info("ℹ️  Database disabled (USE_DATABASE=false). Running without caching.")
+    if not LOAD_TESTING_MODE:
+        logger.info("ℹ️  Database disabled (USE_DATABASE=false). Running without caching.")
 
 
 def get_db() -> Generator[Optional[Session], None, None]:
@@ -85,7 +89,8 @@ def init_db() -> None:
     
     try:
         Base.metadata.create_all(bind=engine)
-        logger.info("✅ Database tables initialized")
+        if not LOAD_TESTING_MODE:
+            logger.info("✅ Database tables initialized")
     except Exception as e:
         logger.warning(f"⚠️  Database initialization failed: {e}")
 

@@ -9,6 +9,7 @@ import numpy as np
 from PIL import Image
 from sqlalchemy.orm import Session
 
+from ..config import LOAD_TESTING_MODE
 from ..database.db_models import MaskContourCache
 from ..utils.utils import base64_to_image
 
@@ -100,7 +101,8 @@ class PerceptualCache:
             if exact_match:
                 exact_match.access_count += 1
                 self.db.commit()
-                logger.info(f"💾 Cache hit (exact match) for hash {image_hash[:8]}...")
+                if not LOAD_TESTING_MODE:
+                    logger.info(f"💾 Cache hit (exact match) for hash {image_hash[:8]}...")
                 return {
                     "svg": exact_match.svg,
                     "mask_contours": exact_match.mask_contours
@@ -122,10 +124,11 @@ class PerceptualCache:
                     if distance <= threshold:
                         entry.access_count += 1
                         self.db.commit()
-                        logger.info(
-                            f"💾 Cache hit (perceptual match, distance={distance}) "
-                            f"for hash {entry.perceptual_hash[:8]}..."
-                        )
+                        if not LOAD_TESTING_MODE:
+                            logger.info(
+                                f"💾 Cache hit (perceptual match, distance={distance}) "
+                                f"for hash {entry.perceptual_hash[:8]}..."
+                            )
                         return {
                             "svg": entry.svg,
                             "mask_contours": entry.mask_contours
@@ -134,7 +137,8 @@ class PerceptualCache:
                     logger.warning(f"Error comparing hash: {e}")
                     continue
             
-            logger.info(f"❌ Cache miss for hash {perceptual_hash[:8]}...")
+            if not LOAD_TESTING_MODE:
+                logger.info(f"❌ Cache miss for hash {perceptual_hash[:8]}...")
             return None
             
         except Exception as e:
@@ -171,7 +175,8 @@ class PerceptualCache:
                 existing.svg = svg
                 existing.mask_contours = mask_contours
                 existing.perceptual_hash = perceptual_hash
-                logger.info(f"🔄 Updated cache entry for hash {image_hash[:8]}...")
+                if not LOAD_TESTING_MODE:
+                    logger.info(f"🔄 Updated cache entry for hash {image_hash[:8]}...")
             else:
                 # Create new entry
                 cache_entry = MaskContourCache(
@@ -182,7 +187,8 @@ class PerceptualCache:
                     access_count=0
                 )
                 self.db.add(cache_entry)
-                logger.info(f"💾 Stored new cache entry for hash {image_hash[:8]}...")
+                if not LOAD_TESTING_MODE:
+                    logger.info(f"💾 Stored new cache entry for hash {image_hash[:8]}...")
             
             self.db.commit()
             
