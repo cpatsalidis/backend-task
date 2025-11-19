@@ -1,0 +1,18 @@
+# Docker/Production requirements (headless - no GUI)
+# For local development with GUI, use: requirements-local.txt
+
+# Core dependencies (headless for Docker)
+opencv-python-headless==4.11.0.86
+numpy>=1.24.0
+
+# API dependencies
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+python-multipart==0.0.20
+requests==2.32.3
+
+# Utility dependencies
+pillow==11.0.0
+
+
