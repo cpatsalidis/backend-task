@@ -1,9 +1,9 @@
 """Rich logging configuration for beautiful console output."""
 
 import logging
-import sys
-from rich.logging import RichHandler
+
 from rich.console import Console
+from rich.logging import RichHandler
 from rich.traceback import install
 
 # Install Rich traceback handler for better error formatting

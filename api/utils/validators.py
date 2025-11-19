@@ -1,10 +1,14 @@
 """Validation logic for API requests."""
 
-from fastapi import HTTPException, status
+import logging
 from typing import List
-import numpy as np
 
-from .models import CropSubmitRequest, Landmark
+import numpy as np
+from fastapi import HTTPException, status
+
+from ..models.models import CropSubmitRequest, Landmark
+
+logger = logging.getLogger(__name__)
 
 
 class RequestValidator:
@@ -47,9 +51,6 @@ class RequestValidator:
             This logs a warning but doesn't raise an exception, as some
             landmarks may be slightly outside bounds due to rounding.
         """
-        import logging
-        logger = logging.getLogger(__name__)
-        
         if landmarks[:, 0].max() > img_width or landmarks[:, 1].max() > img_height:
             logger.warning("Some landmarks are outside image bounds")
 

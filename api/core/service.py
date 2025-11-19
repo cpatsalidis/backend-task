@@ -2,12 +2,13 @@
 
 import sys
 from pathlib import Path
-import cv2 as cv
-import numpy as np
 from typing import Dict, Tuple
 
+import cv2 as cv
+import numpy as np
+
 # Add src directory to path
-src_dir = Path(__file__).parent.parent / 'src'
+src_dir = Path(__file__).parent.parent.parent / 'src'
 sys.path.insert(0, str(src_dir))
 
 import config
@@ -140,6 +141,24 @@ class FacialRegionProcessor:
             # Right ear (right half of image)
             right_ear_mask = ear_mask.copy()
             right_ear_mask[:, :mid_x] = 0
+            
+            # Smooth ear masks for better appearance
+            def smooth_mask(mask):
+                """Apply smoothing operations to mask."""
+                if not mask.any():
+                    return mask
+                # Morphological closing to fill gaps and smooth edges
+                kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, config.MORPH_KERNEL_SIZE)
+                smoothed = cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel)
+                # Gaussian blur for smoother edges
+                smoothed = cv.GaussianBlur(smoothed, config.GAUSSIAN_KERNEL_SIZE, config.GAUSSIAN_SIGMA)
+                # Threshold back to binary
+                _, smoothed = cv.threshold(smoothed, 127, 255, cv.THRESH_BINARY)
+                return smoothed
+            
+            # Apply smoothing to ear masks
+            left_ear_mask = smooth_mask(left_ear_mask)
+            right_ear_mask = smooth_mask(right_ear_mask)
             
             # Apply left ear
             if left_ear_mask.any():

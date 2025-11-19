@@ -1,21 +1,21 @@
 """Business logic layer for facial region processing."""
 
 import logging
-from typing import Dict, Tuple, Optional
-import numpy as np
+from typing import Optional
+
 from sqlalchemy.orm import Session
 
-from .service import FacialRegionProcessor
-from .utils import (
+from ..cache import PerceptualCache
+from ..models import CropSubmitRequest, CropSubmitResponse
+from ..utils import (
+    RequestValidator,
     base64_to_image,
-    landmarks_to_numpy,
     create_svg_overlay,
+    extract_contours_from_masks,
+    landmarks_to_numpy,
     svg_to_base64,
-    extract_contours_from_masks
 )
-from .models import CropSubmitRequest, CropSubmitResponse
-from .validators import RequestValidator
-from .cache import PerceptualCache
+from .service import FacialRegionProcessor
 
 logger = logging.getLogger(__name__)
 

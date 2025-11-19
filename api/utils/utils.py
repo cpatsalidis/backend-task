@@ -1,11 +1,10 @@
 """Utility functions for API operations."""
 
 import base64
-import io
+from typing import List, Dict, Tuple
+
 import cv2 as cv
 import numpy as np
-from typing import List, Dict, Tuple
-from PIL import Image
 
 
 def base64_to_image(base64_string: str) -> np.ndarray:
@@ -227,3 +226,4 @@ def landmarks_to_numpy(landmarks: List[Dict[str, float]]) -> np.ndarray:
     """
     points = np.array([[lm['x'], lm['y']] for lm in landmarks], dtype=np.int32)
     return points
+

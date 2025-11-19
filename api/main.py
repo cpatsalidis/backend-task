@@ -1,27 +1,27 @@
 """FastAPI application for facial region processing."""
 
-from fastapi import FastAPI, HTTPException, status, Query
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-import logging
 import asyncio
+import logging
 from typing import Dict
 
+from fastapi import FastAPI, HTTPException, Query, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from .cache import get_cache_entry, get_cache_stats, list_cache_entries
+from .core import FacialProcessingService
+from .database import init_db
+from .dependencies import DatabaseDep, ProcessorDep
+from .middleware import PrometheusMiddleware, get_metrics_response, setup_logging
 from .models import (
     CropSubmitRequest,
     CropSubmitResponse,
     ErrorResponse,
+    JobStatusResponse,
     JobSubmitResponse,
-    JobStatusResponse
 )
-from .dependencies import ProcessorDep, DatabaseDep
-from .business import FacialProcessingService
-from .database import init_db
-from .cache_views import get_cache_stats, list_cache_entries, get_cache_entry
-from .validators import RequestValidator
-from .job_queue import job_queue
-from .metrics import PrometheusMiddleware, get_metrics_response
-from .logging_config import setup_logging
+from .queue import job_queue
+from .utils import RequestValidator
 
 # Configure Rich logging
 setup_logging(level="INFO")
@@ -102,7 +102,16 @@ async def cache_stats(db: DatabaseDep):
     - Total number of cached entries
     - Total cache hits
     - Most accessed entry
+    
+    Note: Returns empty stats if database is not available.
     """
+    if not db:
+        return {
+            "total_entries": 0,
+            "total_cache_hits": 0,
+            "most_accessed": None,
+            "message": "Database not available - caching disabled"
+        }
     return get_cache_stats(db)
 
 
@@ -116,7 +125,16 @@ async def cache_entries(
     List cache entries.
     
     Returns a paginated list of cache entries with metadata.
+    
+    Note: Returns empty list if database is not available.
     """
+    if not db:
+        return {
+            "entries": [],
+            "limit": limit,
+            "offset": offset,
+            "message": "Database not available - caching disabled"
+        }
     return {
         "entries": list_cache_entries(db, limit=limit, offset=offset),
         "limit": limit,
@@ -130,7 +148,14 @@ async def cache_entry_detail(entry_id: int, db: DatabaseDep):
     Get detailed information about a specific cache entry.
     
     Returns the full cache entry including SVG and mask contours.
+    
+    Note: Returns 503 if database is not available.
     """
+    if not db:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database not available - caching disabled"
+        )
     entry = get_cache_entry(db, entry_id)
     if not entry:
         raise HTTPException(

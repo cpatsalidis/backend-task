@@ -1,10 +1,11 @@
 """Views and utilities for inspecting cache entries."""
 
-from typing import List, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import desc, func
+from typing import Any, Dict, List
 
-from .db_models import MaskContourCache
+from sqlalchemy import desc, func
+from sqlalchemy.orm import Session
+
+from ..database.db_models import MaskContourCache
 
 
 def get_cache_stats(db: Session) -> Dict[str, Any]:

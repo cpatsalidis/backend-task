@@ -1,16 +1,16 @@
 """Perceptual cache system for mask contours."""
 
-import logging
 import hashlib
-import json
+import logging
 from typing import Optional, Dict, Any
+
+import imagehash
 import numpy as np
 from PIL import Image
-import imagehash
 from sqlalchemy.orm import Session
 
-from .db_models import MaskContourCache
-from .utils import base64_to_image
+from ..database.db_models import MaskContourCache
+from ..utils.utils import base64_to_image
 
 logger = logging.getLogger(__name__)
 

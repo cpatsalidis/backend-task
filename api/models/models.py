@@ -1,6 +1,7 @@
 """Pydantic models for API request/response validation."""
 
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from pydantic import BaseModel, Field
 
 
@@ -99,3 +100,4 @@ class JobStatusResponse(BaseModel):
                 }
             }
         }
+

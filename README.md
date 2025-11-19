@@ -64,6 +64,12 @@ pip install -r requirements-local.txt
 uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
+**Note:** The API can run without PostgreSQL. If the database is not available:
+- The API will start normally with a warning message
+- Caching will be disabled (no cache hits/misses)
+- All other functionality works normally
+- To disable database completely, set `USE_DATABASE=false` environment variable
+
 ## API Usage
 
 The API uses an **asynchronous, non-blocking job queue system**. Jobs are submitted and processed in the background, allowing instant responses.

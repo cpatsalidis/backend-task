@@ -1,7 +1,8 @@
 """Database models for storing mask contours."""
 
-from sqlalchemy import Column, Integer, String, JSON, DateTime, Index
+from sqlalchemy import Column, DateTime, Index, Integer, JSON, String
 from sqlalchemy.sql import func
+
 from .database import Base
 
 
@@ -10,7 +11,7 @@ class MaskContourCache(Base):
     
     __tablename__ = "mask_contour_cache"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     perceptual_hash = Column(String(64), nullable=False, index=True)
     image_hash = Column(String(64), nullable=False, index=True)
     svg = Column(String, nullable=False)  # Base64 encoded SVG

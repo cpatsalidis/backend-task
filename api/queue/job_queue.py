@@ -3,9 +3,9 @@
 import asyncio
 import logging
 import time
-from typing import Dict, Optional
 from datetime import datetime
 from enum import Enum
+from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def _import_metrics():
     """Lazy import of metrics to avoid circular dependencies."""
     global _metrics_imported, _jobs_total, _jobs_in_progress, _job_processing_duration_seconds
     if not _metrics_imported:
-        from .metrics import jobs_total, jobs_in_progress, job_processing_duration_seconds
+        from ..middleware.metrics import jobs_total, jobs_in_progress, job_processing_duration_seconds
         _jobs_total = jobs_total
         _jobs_in_progress = jobs_in_progress
         _job_processing_duration_seconds = job_processing_duration_seconds
@@ -201,14 +201,21 @@ class JobQueue:
                 return
             
             # Import here to avoid circular imports
-            from .models import CropSubmitRequest
-            from .database import SessionLocal
+            from ..models.models import CropSubmitRequest
+            from ..database.database import SessionLocal
             
-            # Create a new database session for this job
-            db = SessionLocal()
+            # Create a new database session for this job (if available)
+            db = None
+            if SessionLocal:
+                try:
+                    db = SessionLocal()
+                except Exception as e:
+                    logger.warning(f"⚠️  Failed to create database session: {e}")
+                    db = None
+            
             try:
                 # Create service with database session for caching
-                from .business import FacialProcessingService
+                from ..core import FacialProcessingService
                 service_with_db = FacialProcessingService(processor, db=db)
                 
                 # Process the request in executor to avoid blocking
@@ -223,7 +230,8 @@ class JobQueue:
                     request
                 )
             finally:
-                db.close()
+                if db:
+                    db.close()
             
             # Calculate processing duration
             processing_duration = time.time() - processing_start_time
