@@ -1,8 +1,9 @@
 """Business logic layer for facial region processing."""
 
 import logging
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 import numpy as np
+from sqlalchemy.orm import Session
 
 from .service import FacialRegionProcessor
 from .utils import (
@@ -14,6 +15,7 @@ from .utils import (
 )
 from .models import CropSubmitRequest, CropSubmitResponse
 from .validators import RequestValidator
+from .cache import PerceptualCache
 
 logger = logging.getLogger(__name__)
 
@@ -21,14 +23,20 @@ logger = logging.getLogger(__name__)
 class FacialProcessingService:
     """Business logic service for processing facial images."""
     
-    def __init__(self, processor: FacialRegionProcessor):
+    def __init__(
+        self,
+        processor: FacialRegionProcessor,
+        db: Optional[Session] = None
+    ):
         """
         Initialize service with processor dependency.
         
         Args:
             processor: FacialRegionProcessor instance (injected)
+            db: Optional database session for caching
         """
         self.processor = processor
+        self.cache = PerceptualCache(db) if db else None
     
     def process_crop_submit(
         self,
@@ -55,6 +63,17 @@ class FacialProcessingService:
             RuntimeError: If processing fails
         """
         logger.info("🚀 Starting crop submit processing")
+        
+        # Check cache first if available
+        if self.cache:
+            logger.info("🔍 Checking cache for similar image...")
+            cached_result = self.cache.get_cached_result(request.image)
+            if cached_result:
+                logger.info("✅ Using cached result - skipping processing")
+                return CropSubmitResponse(
+                    svg=cached_result["svg"],
+                    mask_contours=cached_result["mask_contours"]
+                )
         
         # Step 1: Decode base64 images
         logger.info("🖼️  Decoding base64 images...")
@@ -96,6 +115,14 @@ class FacialProcessingService:
         mask_contours = extract_contours_from_masks(region_masks, region_labels)
         
         logger.info(f"✅ Successfully processed image - Found [bold green]{len(mask_contours)}[/bold green] regions")
+        
+        # Store in cache if available
+        if self.cache:
+            try:
+                self.cache.store_result(request.image, svg_base64, mask_contours)
+                logger.info("💾 Result stored in cache")
+            except Exception as e:
+                logger.warning(f"⚠️  Failed to store in cache: {e}")
         
         # Return response
         return CropSubmitResponse(

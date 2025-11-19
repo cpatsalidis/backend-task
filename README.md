@@ -186,3 +186,66 @@ The API uses **Rich** for beautifully formatted console logs with colors, emojis
 🎨 Processing facial regions...
 ✅ Job #123 completed successfully in 2.45s
 ```
+
+## Database & Caching
+
+The API uses **PostgreSQL** with a **perceptual cache system** to store mask contours and avoid duplicate processing.
+
+### How the Cache Works
+
+**Step-by-step:**
+
+1. **Request received** → API receives image processing request
+2. **Cache check** → System computes two hashes:
+   - **Image hash (MD5)**: Exact match for identical images
+   - **Perceptual hash (aHash)**: Similarity match for visually similar images
+3. **Cache lookup**:
+   - First checks for exact match (same image)
+   - If not found, checks for perceptual match (similar images within threshold)
+4. **Cache hit** → Returns cached SVG and mask contours immediately (no processing)
+5. **Cache miss** → Processes image normally, then stores result in database
+
+### Where Data is Stored
+
+**PostgreSQL Database:**
+- **Location**: PostgreSQL container (port 5432)
+- **Database name**: `facial_processing`
+- **Table**: `mask_contour_cache`
+- **What's stored**:
+  - ✅ SVG overlay (base64 encoded)
+  - ✅ Mask contours (JSON format)
+  - ✅ Image hashes (for matching)
+  - ✅ Access count (cache hit tracking)
+  - ✅ Timestamps
+
+**Note**: The original images are NOT stored - only the processing results (SVG and contours) are cached.
+
+### Viewing Cached Data
+
+**API Endpoints:**
+
+1. **Cache Statistics:**
+   ```bash
+   GET /api/v1/cache/stats
+   ```
+   Returns total entries, cache hits, and most accessed entry.
+
+2. **List Cache Entries:**
+   ```bash
+   GET /api/v1/cache/entries?limit=10&offset=0
+   ```
+   Returns paginated list of cache entries with metadata.
+
+3. **Get Specific Entry:**
+   ```bash
+   GET /api/v1/cache/entries/{entry_id}
+   ```
+   Returns full cache entry including SVG and mask contours.
+
+### Cache Configuration
+
+- **Similarity threshold**: Default is 5 (Hamming distance, range 0-64)
+  - Lower = stricter matching (fewer false positives)
+  - Higher = more lenient matching (more cache hits)
+- **Storage**: Results are automatically stored after processing
+- **Persistence**: Data persists in PostgreSQL volume across container restarts

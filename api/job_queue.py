@@ -202,18 +202,28 @@ class JobQueue:
             
             # Import here to avoid circular imports
             from .models import CropSubmitRequest
+            from .database import SessionLocal
             
-            # Process the request in executor to avoid blocking
-            # The service.process_crop_submit is CPU-bound, so we run it in a thread
-            loop = asyncio.get_event_loop()
-            request = CropSubmitRequest(**job.request_data)
-            
-            # Run synchronous processing in executor
-            result = await loop.run_in_executor(
-                None,
-                service.process_crop_submit,
-                request
-            )
+            # Create a new database session for this job
+            db = SessionLocal()
+            try:
+                # Create service with database session for caching
+                from .business import FacialProcessingService
+                service_with_db = FacialProcessingService(processor, db=db)
+                
+                # Process the request in executor to avoid blocking
+                # The service.process_crop_submit is CPU-bound, so we run it in a thread
+                loop = asyncio.get_event_loop()
+                request = CropSubmitRequest(**job.request_data)
+                
+                # Run synchronous processing in executor
+                result = await loop.run_in_executor(
+                    None,
+                    service_with_db.process_crop_submit,
+                    request
+                )
+            finally:
+                db.close()
             
             # Calculate processing duration
             processing_duration = time.time() - processing_start_time

@@ -14,8 +14,10 @@ from .models import (
     JobSubmitResponse,
     JobStatusResponse
 )
-from .dependencies import ProcessorDep
+from .dependencies import ProcessorDep, DatabaseDep
 from .business import FacialProcessingService
+from .database import init_db
+from .cache_views import get_cache_stats, list_cache_entries, get_cache_entry
 from .validators import RequestValidator
 from .job_queue import job_queue
 from .metrics import PrometheusMiddleware, get_metrics_response
@@ -46,6 +48,17 @@ app.add_middleware(
 
 # Add Prometheus metrics middleware
 app.add_middleware(PrometheusMiddleware)
+
+
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database on application startup."""
+    try:
+        init_db()
+        logger.info("✅ Database initialized")
+    except Exception as e:
+        logger.warning(f"⚠️  Database initialization failed: {e}")
 
 
 @app.get("/")
@@ -80,6 +93,53 @@ async def metrics():
     return get_metrics_response()
 
 
+@app.get("/api/v1/cache/stats", tags=["Cache"])
+async def cache_stats(db: DatabaseDep):
+    """
+    Get cache statistics.
+    
+    Returns information about cached entries including:
+    - Total number of cached entries
+    - Total cache hits
+    - Most accessed entry
+    """
+    return get_cache_stats(db)
+
+
+@app.get("/api/v1/cache/entries", tags=["Cache"])
+async def cache_entries(
+    db: DatabaseDep,
+    limit: int = Query(10, ge=1, le=100, description="Maximum number of entries to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination")
+):
+    """
+    List cache entries.
+    
+    Returns a paginated list of cache entries with metadata.
+    """
+    return {
+        "entries": list_cache_entries(db, limit=limit, offset=offset),
+        "limit": limit,
+        "offset": offset
+    }
+
+
+@app.get("/api/v1/cache/entries/{entry_id}", tags=["Cache"])
+async def cache_entry_detail(entry_id: int, db: DatabaseDep):
+    """
+    Get detailed information about a specific cache entry.
+    
+    Returns the full cache entry including SVG and mask contours.
+    """
+    entry = get_cache_entry(db, entry_id)
+    if not entry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Cache entry {entry_id} not found"
+        )
+    return entry
+
+
 @app.post(
     "/api/v1/frontal/crop/submit",
     response_model=JobSubmitResponse,
@@ -94,6 +154,7 @@ async def metrics():
 async def crop_submit(
     request: CropSubmitRequest,
     processor: ProcessorDep,
+    db: DatabaseDep,
     delay: float = Query(0.0, description="Optional delay in seconds to simulate complex processing")
 ) -> JobSubmitResponse:
     """
@@ -133,12 +194,12 @@ async def crop_submit(
         job = await job_queue.create_job(request.dict())
         
         # Start background processing
-        service = FacialProcessingService(processor)
+        # Note: Service will be created in process_job with its own DB session
         asyncio.create_task(
             job_queue.process_job(
                 job.id,
                 processor,
-                service,
+                None,  # Service will be created in process_job
                 delay_seconds=delay
             )
         )
